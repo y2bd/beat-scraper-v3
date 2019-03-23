@@ -8,6 +8,9 @@ import Data.Text
     pack
   )
 import Data.Text.IO as T
+import Data.Foldable
+  ( traverse_
+  )
 import Lib
 
 pshow :: Show a => a -> Text
@@ -16,7 +19,7 @@ pshow = pack . show
 getScores :: Profile -> IO ()
 getScores profile = do
   scores' <- scores profile
-  mapM_ (T.putStrLn . pshow) scores'
+  traverse_ (T.putStrLn . pshow) scores'
 
 main :: IO ()
 main = do

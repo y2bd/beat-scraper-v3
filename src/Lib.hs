@@ -10,6 +10,9 @@ module Lib
 
 import Control.Monad
 import Data.Either
+import Data.Foldable
+  ( fold
+  )
 import Data.Maybe
 import Data.Text 
   ( Text,
@@ -104,21 +107,13 @@ profile profileId = scrapeURL url profileData
       return (username, rank)
 
     pageCount :: Scraper String PageCount
-    pageCount = do
-      pages <- texts ("ul" @. "pagination-list" // "li" // "a")
-      return $ (read . last) pages
+    pageCount = (read . last) <$> texts ("ul" @. "pagination-list" // "li" // "a")
 
 scores :: Profile -> IO [Score]
-scores (Profile profileId _ _ pageCount) = allPageScores
-  where 
-    pages = [1..pageCount]
+scores (Profile profileId _ _ pageCount) = foldMap (pageScores profileId) [1..pageCount]
 
-    allPageScores = do
-      scores <- mapM (pageScores profileId) pages
-      return $ (concat . catMaybes) scores
-  
-pageScores :: ProfileId -> PageNumber -> IO (Maybe [Score])
-pageScores profileId page = scrapeURL url pageScores'
+pageScores :: ProfileId -> PageNumber -> IO [Score]
+pageScores profileId page = fmap fold scraped
   where
     url :: String
     url = profileUrl profileId page
@@ -130,3 +125,6 @@ pageScores profileId page = scrapeURL url pageScores'
       rank      <- readRank <$> text ("th" @. "rank")
       pp        <- fromRead 0.0 <$> text ("span" @. "ppValue")
       return $ (Score dateTime trackName rank pp)
+
+    scraped :: IO (Maybe [Score])
+    scraped = scrapeURL url pageScores'
